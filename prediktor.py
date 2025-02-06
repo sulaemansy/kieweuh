@@ -6,8 +6,8 @@ import random
 from collections import deque
 
 # Konfigurasi Bot Telegram
-TOKEN = "token bot"
-CHAT_ID = "-1002402121526" #id group atau username @groupbusuk
+TOKEN = "ganti token" # token mu
+CHAT_ID = "-1002402121526" # id group atau usergroup @groupmu
 
 # URL API
 API_URL = "https://didihub20.com/api/main/lottery/rounds?page=1&count=20&type=2"
@@ -22,6 +22,7 @@ history = deque(maxlen=20)
 # Menyimpan periode terakhir yang sudah dikirim
 last_sent_period = None
 current_bet_index = 0  # Index untuk tabel kompensasi (mulai dari 1000)
+current_bet_amount = KOMPEN_TABLE[current_bet_index]  # Taruhan awal
 
 # Fungsi untuk mengambil data dari API
 def get_lottery_data():
@@ -43,7 +44,7 @@ def generate_random_prediction():
 # Fungsi untuk mengecek apakah taruhan menang atau kalah
 def check_win_loss(prediction, last_result):
     result_type = "Kecil" if 0 <= last_result <= 4 else "Besar"
-    status = "Menang" if prediction == result_type else "Kalah"
+    status = "WIN✅IN" if prediction == result_type else "MIN"
     return status, last_result, result_type
 
 # Fungsi untuk mengirim pesan ke Telegram
@@ -54,7 +55,7 @@ async def send_telegram_message(message):
 
 # Fungsi utama (looping terus menerus)
 async def main():
-    global last_sent_period, current_bet_index
+    global last_sent_period, current_bet_index, current_bet_amount
 
     while True:
         data = get_lottery_data()
@@ -69,22 +70,26 @@ async def main():
                 prediction = generate_random_prediction()
                 status, result_number, result_type = check_win_loss(prediction, last_result)
 
-                # Menentukan taruhan berdasarkan menang/kalah
-                if status == "Menang":
-                    current_bet_index = 0  # Reset taruhan ke 1000 jika menang
+                # **Simpan nilai taruhan sebelum diperbarui**
+                bet_amount = current_bet_amount  
+
+                # Update taruhan untuk periode berikutnya
+                if status == "WIN✅":
+                    current_bet_index = 0  # Reset taruhan ke 1000 jika menang WIN✅
                 else:
                     current_bet_index = min(current_bet_index + 1, len(KOMPEN_TABLE) - 1)  # Naikkan level taruhan
                 
-                bet_amount = KOMPEN_TABLE[current_bet_index]
+                # Update nilai taruhan yang akan digunakan di periode berikutnya
+                current_bet_amount = KOMPEN_TABLE[current_bet_index]  
 
-                # Simpan ke riwayat
+                # Simpan ke riwayat dengan taruhan yang benar
                 history.append(f"{last_period} {prediction} {bet_amount} {status} hasil {result_number} {result_type}")
 
                 # Debugging: Cetak di layar untuk cek menang/kalah
                 print("\n==== DEBUG INFO ====")
                 print(f"Periode: {last_period}")
                 print(f"Prediksi: {prediction}")
-                print(f"Taruhan: {bet_amount}")
+                print(f"Taruhan: {bet_amount}")  # **Sekarang taruhan selalu sesuai dengan kompensasi**
                 print(f"Hasil: {result_number} ({result_type})")
                 print(f"Status: {status}")
                 print("====================\n")
@@ -95,8 +100,8 @@ async def main():
                 # Kirim ke Telegram
                 await send_telegram_message(history_message)
 
-                # Kirim prediksi baru
-                prediction_message = f"Prediksi sekarang: {next_period} {prediction} {bet_amount}"
+                # Kirim prediksi baru dengan taruhan yang diperbarui
+                prediction_message = f"Prediksi sekarang: {next_period} {prediction} {current_bet_amount}"
                 print(prediction_message)  # Cetak di layar juga
                 await send_telegram_message(prediction_message)
 
