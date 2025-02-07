@@ -6,8 +6,8 @@ import random
 from collections import deque
 
 # Konfigurasi Bot Telegram
-TOKEN = "ganti token" # token mu
-CHAT_ID = "-1002402121526" # id group atau usergroup @groupmu
+TOKEN = "isi token" # ganti token anda
+CHAT_ID = "-1002402121526" ganti id group mu
 
 # URL API
 API_URL = "https://didihub20.com/api/main/lottery/rounds?page=1&count=20&type=2"
@@ -44,7 +44,7 @@ def generate_random_prediction():
 # Fungsi untuk mengecek apakah taruhan menang atau kalah
 def check_win_loss(prediction, last_result):
     result_type = "Kecil" if 0 <= last_result <= 4 else "Besar"
-    status = "WIN✅IN" if prediction == result_type else "MIN"
+    status = "WIN✅" if prediction == result_type else "MIN"
     return status, last_result, result_type
 
 # Fungsi untuk mengirim pesan ke Telegram
@@ -75,7 +75,7 @@ async def main():
 
                 # Update taruhan untuk periode berikutnya
                 if status == "WIN✅":
-                    current_bet_index = 0  # Reset taruhan ke 1000 jika menang WIN✅
+                    current_bet_index = 0  # Reset taruhan ke 1000 jika menang 
                 else:
                     current_bet_index = min(current_bet_index + 1, len(KOMPEN_TABLE) - 1)  # Naikkan level taruhan
                 
