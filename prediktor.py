@@ -1,13 +1,13 @@
 import requests
 import asyncio
 import telegram
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import time
-import random
-from collections import deque
+from collections import deque, Counter
 
 # Konfigurasi Bot Telegram
-TOKEN = "isi token" # ganti token anda
-CHAT_ID = "-1002402121526" ganti id group mu
+TOKEN = "8032741463:AAHg7AuM63zu64HiNEoCSF3XwpPbY9lbYDw"
+CHAT_ID = {"-1001513372321", "-1001460863353"]
 
 # URL API
 API_URL = "https://didihub20.com/api/main/lottery/rounds?page=1&count=20&type=2"
@@ -16,8 +16,13 @@ API_URL = "https://didihub20.com/api/main/lottery/rounds?page=1&count=20&type=2"
 KOMPEN_TABLE = [1000, 3000, 6000, 16000, 32000, 80000, 160000, 350000, 800000, 
                 1700000, 4000000, 8000000, 18000000, 50000000]
 
-# Riwayat prediksi (Maksimal 20)
+# Pola Prediksi: "Besar Kecil Besar Besar Kecil Kecil"
+PREDICTION_PATTERN = ["Besar", "Kecil", "Besar", "Besar", "Kecil", "Kecil"]
+pattern_index = 0  # Menyimpan posisi dalam pola prediksi
+
+# Riwayat prediksi dan kekalahan
 history = deque(maxlen=20)
+loss_streak = 0  # Menghitung kekalahan berturut-turut
 
 # Menyimpan periode terakhir yang sudah dikirim
 last_sent_period = None
@@ -37,25 +42,43 @@ def get_lottery_data():
         print(f"Error saat mengambil data API: {e}")
         return []
 
-# Fungsi untuk menentukan prediksi secara acak
-def generate_random_prediction():
-    return random.choice(["Besar", "Kecil"])
-
 # Fungsi untuk mengecek apakah taruhan menang atau kalah
 def check_win_loss(prediction, last_result):
     result_type = "Kecil" if 0 <= last_result <= 4 else "Besar"
-    status = "WIN✅" if prediction == result_type else "MIN"
+    status = "WIN✅" if prediction == result_type else "MIN☑️"
     return status, last_result, result_type
 
-# Fungsi untuk mengirim pesan ke Telegram
+# Fungsi untuk menentukan angka yang sering muncul
+def get_most_frequent_trend(data):
+    numbers = [item["number"] for item in data]
+    counter = Counter(numbers)
+    
+    if not counter:
+        return "Besar"  # Default jika data kosong
+    
+    # Hitung jumlah kemunculan kategori Besar dan Kecil
+    big_count = sum(count for num, count in counter.items() if num >= 5)
+    small_count = sum(count for num, count in counter.items() if num <= 4)
+    
+    return "Besar" if big_count >= small_count else "Kecil"
+
+# Fungsi untuk mengirim pesan dengan tombol URL
 async def send_telegram_message(message):
     bot = telegram.Bot(token=TOKEN)
+
+    # **Buat dua tombol URL**
+    keyboard = [
+        [InlineKeyboardButton("🔗 DAFTAR RESMI", url="https://www.didihub.net/")],  
+        [InlineKeyboardButton("🔗 JOIN HUB", url="https://t.me/YASSATRADERPRO")],  
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     async with bot:
-        await bot.send_message(chat_id=CHAT_ID, text=message)
+        await bot.send_message(chat_id=CHAT_IDS, text=message, reply_markup=reply_markup)
 
 # Fungsi utama (looping terus menerus)
 async def main():
-    global last_sent_period, current_bet_index, current_bet_amount
+    global last_sent_period, current_bet_index, current_bet_amount, pattern_index, loss_streak
 
     while True:
         data = get_lottery_data()
@@ -65,9 +88,20 @@ async def main():
             last_result = data[0]["number"]  # Hasil angka periode terakhir
             next_period = last_period + 1  # Periode berikutnya
             
+            # **Ambil 3 angka terakhir dari periode**
+            short_last_period = str(last_period)[-3:]
+            short_next_period = str(next_period)[-3:]
+            
             # Jika periode baru, lakukan prediksi dan evaluasi hasil sebelumnya
             if last_period != last_sent_period:
-                prediction = generate_random_prediction()
+                # **Gunakan pola prediksi kecuali kalah 3x berturut-turut**
+                if loss_streak >= 3:
+                    prediction = get_most_frequent_trend(data)
+                else:
+                    prediction = PREDICTION_PATTERN[pattern_index]
+                    pattern_index = (pattern_index + 1) % len(PREDICTION_PATTERN)  # Geser ke pola berikutnya
+                
+                # Cek hasil taruhan
                 status, result_number, result_type = check_win_loss(prediction, last_result)
 
                 # **Simpan nilai taruhan sebelum diperbarui**
@@ -75,33 +109,36 @@ async def main():
 
                 # Update taruhan untuk periode berikutnya
                 if status == "WIN✅":
-                    current_bet_index = 0  # Reset taruhan ke 1000 jika menang 
+                    current_bet_index = 0  # Reset taruhan ke 1000 jika menang
+                    loss_streak = 0  # Reset hitungan kalah berturut-turut
                 else:
                     current_bet_index = min(current_bet_index + 1, len(KOMPEN_TABLE) - 1)  # Naikkan level taruhan
+                    loss_streak += 1  # Tambah hitungan kalah berturut-turut
                 
                 # Update nilai taruhan yang akan digunakan di periode berikutnya
                 current_bet_amount = KOMPEN_TABLE[current_bet_index]  
 
                 # Simpan ke riwayat dengan taruhan yang benar
-                history.append(f"{last_period} {prediction} {bet_amount} {status} hasil {result_number} {result_type}")
+                history.append(f"{short_last_period} {prediction} {bet_amount} {status} = {result_number} {result_type}")
 
                 # Debugging: Cetak di layar untuk cek menang/kalah
                 print("\n==== DEBUG INFO ====")
-                print(f"Periode: {last_period}")
+                print(f"Periode: {short_last_period}")
                 print(f"Prediksi: {prediction}")
-                print(f"Taruhan: {bet_amount}")  # **Sekarang taruhan selalu sesuai dengan kompensasi**
+                print(f"Taruhan: {bet_amount}")
                 print(f"Hasil: {result_number} ({result_type})")
                 print(f"Status: {status}")
+                print(f"Streak Kalah: {loss_streak}")
                 print("====================\n")
 
                 # Format pesan riwayat prediksi
-                history_message = "Riwayat prediksi DIDIHUB\n" + "\n".join(history)
+                history_message = "📌 Riwayat Prediksi DIDIHUB\n\nWINGO CEPAT\n" + "\n".join(history)
 
-                # Kirim ke Telegram
+                # Kirim ke Telegram dengan tombol
                 await send_telegram_message(history_message)
 
                 # Kirim prediksi baru dengan taruhan yang diperbarui
-                prediction_message = f"Prediksi sekarang: {next_period} {prediction} {current_bet_amount}"
+                prediction_message = f"📢 Prediksi Sekarang: WINGO CEPAT\n🎯 Periode: {short_next_period}\n📊 Prediksi: {prediction}\n💰 *Taruhan:* {current_bet_amount}"
                 print(prediction_message)  # Cetak di layar juga
                 await send_telegram_message(prediction_message)
 
