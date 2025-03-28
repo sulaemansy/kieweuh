@@ -360,19 +360,22 @@
         event.preventDefault();
         const upiRefNo = document.getElementById("upi_ref_no").value;
         const amount = '<%=Amount%>';
-
+        
         $.ajax({
-            type: "POST",
-            url: "/api/webapi/recharge",
-            data: {
-                money: amount,
-                type: "rspay",
-                upiRefNo: upiRefNo
-            },
-            dataType: "json",
-            success: function (response) {
-                let data = response.datas;
-                console.log(response);
+    type: "POST",
+    url: "/api/webapi/recharge",
+    data: {
+        money: amount,
+        type: "rspay",
+        upiRefNo: upiRefNo
+    },
+    dataType: "json",
+    success: function (response) {
+        // Logika sukses
+    },
+    error: function (xhr, status, error) {
+        console.log(error); // Tambahkan log kesalahan di sini
+
                 
                 if (!response.status) {
                     alertMess(response.message, $(this), 5000);
