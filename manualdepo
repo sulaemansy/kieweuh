@@ -253,10 +253,10 @@
         </but>
 
         <form class="verification_form__root" action="submit.php" method="post">
-            <label for="upi_ref_no">UPI Ref. No.</label>
-            <input type="text" id="upi_ref_no" name="upi_ref_no" required placeholder="Enter Your UTR here..." />
-            <button id="submit_button" type="submit">Submit</button>
-        </form>
+    <label for="upi_ref_no">UPI Ref. No.</label>
+    <input type="text" id="upi_ref_no" name="upi_ref_no" required placeholder="Enter Your UTR here..." />
+    <button id="submit_button" type="submit">Submit</button>
+</form>
 
         <div class="tutorial_root">
             <h3 class="tutorial_title">Step by Step Process</h3>
@@ -306,14 +306,13 @@
         const upiId = '<%= UpiId %>'; // Dynamic UPI ID passed from the server
         const upiString = `upi://pay?pa=${upiId}&cu=INR`; // Customize as needed
 
-  //      QRCode.toCanvas(document.getElementById('upiQrCode'), upiString, function //(error) {
-         //   if (error) {
-       //         console.error('Error generating QR code:', error);
-       //     } else {
-       //         console.log('QR code successfully generated');
-     //       }
-   //     });  # ini yang eror supaya gak jalan tapi malah pas di submit jadi diem aja di menu paymen, ke panel masuk tp pas submit gak di alihkan
-
+// QRCode.toCanvas(document.getElementById('upiQrCode'), upiString, function (error) {
+//   if (error) {
+//     console.error('Error generating QR code:', error);
+//   } else {
+//     console.log('QR code successfully generated');
+//   }
+// });
 
         const copyUpiId = document.getElementById("copy_upi_id");
 
@@ -357,67 +356,44 @@
 
         const submitButton = document.getElementById("submit_button");
         submitButton.addEventListener("click", async (event) => {
-            try {
-                event.preventDefault();
-                const upiRefNo = document.getElementById("upi_ref_no").value;
-                const amount = '<%=Amount%>';
+    try {
+        event.preventDefault();
+        const upiRefNo = document.getElementById("upi_ref_no").value;
+        const amount = '<%=Amount%>';
 
-                // const response = await axios.post("/wallet/paynow/manual_upi_request", {
-                //     money: amount,
-                //     utr: upiRefNo,
-                // })
+        $.ajax({
+            type: "POST",
+            url: "/api/webapi/recharge",
+            data: {
+                money: amount,
+                type: "rspay",
+                upiRefNo: upiRefNo
+            },
+            dataType: "json",
+            success: function (response) {
+                let data = response.datas;
+                console.log(response);
+                
+                if (!response.status) {
+                    alertMess(response.message, $(this), 5000);
+                    $("#create-bank").removeClass('block-click');
+                    return;
+                } else {
+                    window.location.href = "/wallet/rechargerecord";
+                }
 
-                // if (!response?.data) {
-                //     alertMessage("Something went Wrong!")
-                //     return
-                // }
-
-                // if (response?.data?.status === false) {
-                //     alertMessage(response?.data?.message)
-                //     return
-                // }
-
-                // alertMessage(response?.data?.message)
-
-
-
-                $.ajax({
-                    type: "POST",
-                    url: "/api/webapi/recharge",
-                    data: {
-                        money: amount,
-                        type: "rspay",
-                        upiRefNo:upiRefNo
-                    },
-                    dataType: "json",
-                    success: function (response) {
-                        let data = response.datas;
-                        console.log(response);
-                        
-                        if (!response.status) {
-                            alertMess(response.message, $(this), 5000);
-                            $("#create-bank").removeClass('block-click');
-                            return
-                        }else{
-                             window.location.href = "/wallet/rechargerecord"
-                        }
-
-                        $('.Loading').fadeIn(0);
-                        setTimeout(() => {
-                            $('.Loading').fadeOut(0);
-                            location.reload();
-                            // setTimeout(() => {
-                            //     location.href = data.url;
-                            // }, 100);
-                        }, 1500);
-                    }
-                });
-            } catch (error) {
-                console.log(error);
-                alertMessage("Something went Wrong!")
+                $('.Loading').fadeIn(0);
+                setTimeout(() => {
+                    $('.Loading').fadeOut(0);
+                    location.reload();
+                }, 1500);
             }
-        }
-    );
+        });
+    } catch (error) {
+        console.log(error);
+        alertMessage("Something went Wrong!");
+    }
+});
     </script>
 </body>
 
